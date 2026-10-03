@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyBuddy — Smart Pomodoro, Flashcards & Quiz</title>
+  <meta name="description" content="A beautiful all-in-one study companion featuring a customizable Pomodoro timer, 3D interactive flashcards, customizable quizzes, and ambient focus sounds.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <!-- Confetti Canvas for celebrations -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-layout">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-avatar" id="brand-avatar">
+          <svg viewBox="0 0 100 100" class="buddy-mini-svg">
+            <circle cx="50" cy="50" r="45" fill="url(#brand-grad)" />
+            <circle cx="35" cy="42" r="6" fill="#ffffff" />
+            <circle cx="65" cy="42" r="6" fill="#ffffff" />
+            <circle cx="35" cy="42" r="2.5" fill="#1e1b4b" />
+            <circle cx="65" cy="42" r="2.5" fill="#1e1b4b" />
+            <path d="M 40 60 Q 50 70 60 60" stroke="#ffffff" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M 28 32 Q 35 28 42 32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 58 32 Q 65 28 72 32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <defs>
+              <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#ec4899" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="online-indicator"></span>
+        </div>
+        <div class="brand-info">
+          <h1 class="brand-title">StudyBuddy<span class="badge-pro">PRO</span></h1>
+          <p class="brand-tagline" id="header-tagline">Focus • Retain • Master</p>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="nav-tabs" role="tablist" aria-label="Main Navigation">
+        <button class="nav-tab active" id="tab-btn-pomodoro" data-tab="pomodoro" role="tab" aria-selected="true">
+          <span class="tab-icon">⏱️</span>
+          <span class="tab-text">Pomodoro</span>
+        </button>
+        <button class="nav-tab" id="tab-btn-flashcards" data-tab="flashcards" role="tab" aria-selected="false">
+          <span class="tab-icon">🗂️</span>
+          <span class="tab-text">Flashcards</span>
+        </button>
+        <button class="nav-tab" id="tab-btn-quiz" data-tab="quiz" role="tab" aria-selected="false">
+          <span class="tab-icon">📝</span>
+          <span class="tab-text">Quiz Master</span>
+        </button>
+        <button class="nav-tab" id="tab-btn-stats" data-tab="stats" role="tab" aria-selected="false">
+          <span class="tab-icon">📊</span>
+          <span class="tab-text">Buddy & Stats</span>
+        </button>
+      </nav>
+
+      <!-- Quick Action Controls -->
+      <div class="header-actions">
+        <!-- Ambient Sound Selector -->
+        <div class="ambient-control-wrapper">
+          <button class="action-btn icon-btn" id="ambient-btn" title="Ambient Focus Sounds" aria-label="Ambient Sound">
+            <span id="ambient-icon">🎧</span>
+            <span class="ambient-label" id="ambient-label">Silence</span>
+          </button>
+          <div class="ambient-menu hidden" id="ambient-menu">
+            <div class="ambient-menu-header">Ambient Soundscapes</div>
+            <button class="ambient-opt active" data-sound="none">🔇 Off (Silence)</button>
+            <button class="ambient-opt" data-sound="rain">🌧️ Gentle Rain</button>
+            <button class="ambient-opt" data-sound="whitenoise">💨 Pink Noise</button>
+            <button class="ambient-opt" data-sound="binaural">🧠 Alpha Waves (14Hz)</button>
+            <div class="ambient-slider-box">
+              <label for="ambient-vol">Volume</label>
+              <input type="range" id="ambient-vol" min="0" max="1" step="0.05" value="0.5">
+            </div>
+          </div>
+        </div>
+
+        <!-- Mute / Unmute SFX -->
+        <button class="action-btn icon-btn" id="sfx-toggle-btn" title="Toggle Sound Effects" aria-label="Toggle Sound Effects">
+          <span id="sfx-icon">🔊</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="action-btn icon-btn" id="theme-toggle-btn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+          <span id="theme-icon">🌙</span>
+        </button>
+
+        <!-- Settings Modal Trigger -->
+        <button class="action-btn icon-btn" id="settings-open-btn" title="App Settings" aria-label="Settings">
+          <span>⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container for View Panels -->
+    <main class="main-content">
+
+      <!-- ================= 1. POMODORO VIEW ================= -->
+      <section class="view-panel active" id="view-pomodoro" role="tabpanel">
+        <div class="pomodoro-grid">
+          <!-- Main Timer Card -->
+          <div class="glass-card timer-card">
+            <!-- Mode Switcher (Focus / Short Break / Long Break) -->
+            <div class="timer-mode-pills" role="radiogroup" aria-label="Timer Mode">
+              <button class="mode-pill active" id="mode-focus" data-mode="focus">
+                <span>🎯</span> Focus (<span id="pill-focus-min">25</span>m)
+              </button>
+              <button class="mode-pill" id="mode-short" data-mode="shortBreak">
+                <span>☕</span> Short Break (<span id="pill-short-min">5</span>m)
+              </button>
+              <button class="mode-pill" id="mode-long" data-mode="longBreak">
+                <span>🌿</span> Long Break (<span id="pill-long-min">15</span>m)
+              </button>
+            </div>
+
+            <!-- Circular Progress SVG Timer -->
+            <div class="timer-ring-container">
+              <svg class="timer-svg" viewBox="0 0 280 280">
+                <circle class="timer-ring-bg" cx="140" cy="140" r="120" />
+                <circle class="timer-ring-progress" id="timer-progress-ring" cx="140" cy="140" r="120" />
+              </svg>
+              <div class="timer-display-inner">
+                <span class="timer-mode-label" id="timer-mode-label">DEEP FOCUS</span>
+                <span class="timer-digits" id="timer-digits">25:00</span>
+                <div class="timer-streak-chips">
+                  <span class="streak-chip" id="session-count-chip">Session 1 of 4</span>
+                  <span class="status-chip" id="timer-status-chip">Ready</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Primary Timer Controls -->
+            <div class="timer-controls">
+              <button class="control-btn secondary-btn" id="timer-minus5-btn" title="Subtract 5 Minutes">-5m</button>
+              <button class="control-btn primary-btn large-play-btn" id="timer-play-btn">
+                <span id="play-btn-icon">▶</span>
+                <span id="play-btn-text">Start Focus</span>
+              </button>
+              <button class="control-btn secondary-btn" id="timer-plus5-btn" title="Add 5 Minutes">+5m</button>
+              <button class="control-btn icon-only-btn" id="timer-reset-btn" title="Reset Session">↺</button>
+              <button class="control-btn icon-only-btn" id="timer-skip-btn" title="Skip to Next Mode">⏭</button>
+            </div>
+
+            <!-- Quick Task Focus Input -->
+            <div class="current-task-box">
+              <div class="task-checkbox-wrap">
+                <input type="checkbox" id="task-completed-check">
+                <label for="task-completed-check" class="custom-checkbox"></label>
+              </div>
+              <input type="text" id="current-task-input" placeholder="What are you focusing on right now?" class="task-input" maxlength="80">
+              <span class="task-badge" id="task-streak-badge">🔥 Focus Task</span>
+            </div>
+          </div>
+
+          <!-- Study Buddy Companion Card -->
+          <div class="glass-card buddy-sidebar-card">
+            <div class="card-header-simple">
+              <div class="buddy-header-title">
+                <span class="badge-mini">Companion</span>
+                <h3 id="buddy-name-display">Kitsune the Study Fox</h3>
+              </div>
+              <button class="ghost-btn icon-only-btn" id="buddy-poke-btn" title="Cheer me up!">✨</button>
+            </div>
+
+            <!-- Animated Buddy Avatar -->
+            <div class="buddy-interactive-stage" id="buddy-stage">
+              <div class="buddy-avatar-wrapper" id="buddy-avatar-wrapper">
+                <!-- SVG Avatar with expressions -->
+                <svg viewBox="0 0 160 160" class="buddy-mascot-svg" id="buddy-mascot">
+                  <!-- Ears -->
+                  <polygon points="40,60 20,15 65,35" fill="#f97316" class="ear-left" />
+                  <polygon points="45,55 30,25 60,40" fill="#fde047" />
+                  <polygon points="120,60 140,15 95,35" fill="#f97316" class="ear-right" />
+                  <polygon points="115,55 130,25 100,40" fill="#fde047" />
+                  <!-- Head -->
+                  <circle cx="80" cy="85" r="55" fill="#fb923c" />
+                  <!-- Face white mask -->
+                  <path d="M 40 85 C 40 120 70 130 80 130 C 90 130 120 120 120 85 C 120 65 105 80 80 90 C 55 80 40 65 40 85 Z" fill="#ffffff" />
+                  <!-- Eyes -->
+                  <g id="buddy-eyes" class="buddy-eyes">
+                    <circle cx="60" cy="85" r="6" fill="#1e1b4b" id="eye-left" />
+                    <circle cx="100" cy="85" r="6" fill="#1e1b4b" id="eye-right" />
+                    <circle cx="62" cy="83" r="2" fill="#ffffff" />
+                    <circle cx="102" cy="83" r="2" fill="#ffffff" />
+                  </g>
+                  <!-- Cheeks blush -->
+                  <ellipse cx="50" cy="98" rx="7" ry="4" fill="#fda4af" opacity="0.8" />
+                  <ellipse cx="110" cy="98" rx="7" ry="4" fill="#fda4af" opacity="0.8" />
+                  <!-- Nose -->
+                  <polygon points="76,100 84,100 80,105" fill="#1e1b4b" />
+                  <!-- Mouth -->
+                  <path id="buddy-mouth" d="M 74 110 Q 80 116 86 110" stroke="#1e1b4b" stroke-width="2.5" stroke-linecap="round" fill="none" />
+                  <!-- Glasses accessory (dynamic) -->
+                  <g id="buddy-glasses" class="hidden">
+                    <circle cx="60" cy="85" r="14" stroke="#6366f1" stroke-width="3" fill="none" />
+                    <circle cx="100" cy="85" r="14" stroke="#6366f1" stroke-width="3" fill="none" />
+                    <line x1="74" y1="85" x2="86" y2="85" stroke="#6366f1" stroke-width="3" />
+                  </g>
+                </svg>
+              </div>
+              <div class="buddy-status-pill" id="buddy-state-badge">Ready to conquer tasks!</div>
+            </div>
+
+            <!-- Motivational Speech Bubble -->
+            <div class="speech-bubble" id="buddy-speech">
+              <p id="buddy-quote-text">“You're capable of learning anything step by step!” 🌟</p>
+              <button class="speech-refresh-btn" id="refresh-quote-btn" title="Next tip">↻</button>
+            </div>
+
+            <!-- Quick Mini Stats -->
+            <div class="quick-stats-row">
+              <div class="mini-stat-card">
+                <span class="mini-stat-val" id="mini-today-pomos">0</span>
+                <span class="mini-stat-lbl">Pomos Today</span>
+              </div>
+              <div class="mini-stat-card">
+                <span class="mini-stat-val" id="mini-today-mins">0m</span>
+                <span class="mini-stat-lbl">Focus Time</span>
+              </div>
+              <div class="mini-stat-card">
+                <span class="mini-stat-val" id="mini-cards-reviewed">0</span>
+                <span class="mini-stat-lbl">Cards Studied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. FLASHCARDS VIEW ================= -->
+      <section class="view-panel" id="view-flashcards" role="tabpanel">
+        <!-- Flashcards Header / Top Toolbar -->
+        <div class="section-toolbar">
+          <div class="toolbar-title-group">
+            <h2 class="section-title">🗂️ Interactive Flashcards</h2>
+            <p class="section-subtitle">Retain complex concepts with spaced active recall and 3D card flips.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="control-btn secondary-btn" id="btn-create-deck">
+              <span>➕</span> New Deck
+            </button>
+            <button class="control-btn secondary-btn" id="btn-export-decks" title="Export Decks as JSON">
+              <span>💾</span> Export
+            </button>
+            <button class="control-btn secondary-btn" id="btn-import-decks-trigger" title="Import Decks from JSON">
+              <span>📥</span> Import
+            </button>
+            <input type="file" id="import-deck-file-input" accept=".json" class="hidden">
+          </div>
+        </div>
+
+        <!-- Decks Grid (When not in active study mode) -->
+        <div id="decks-browser-view" class="decks-browser-container">
+          <div class="decks-grid" id="decks-grid">
+            <!-- Dynamically populated deck cards -->
+          </div>
+        </div>
+
+        <!-- Active Flashcard Study Arena (When user enters a deck) -->
+        <div id="deck-study-view" class="deck-study-container hidden">
+          <div class="study-session-header">
+            <button class="ghost-btn" id="btn-exit-study">← Back to Decks</button>
+            <div class="study-deck-title-wrap">
+              <span class="badge-mini" id="study-deck-category">Category</span>
+              <h3 id="study-deck-title">Deck Title</h3>
+            </div>
+            <div class="study-progress-wrap">
+              <span id="study-card-counter">Card 1 / 5</span>
+              <div class="linear-progress-bar">
+                <div class="linear-progress-fill" id="study-progress-fill" style="width: 20%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3D Flip Card Container -->
+          <div class="flashcard-3d-scene" id="flashcard-scene">
+            <div class="flashcard-flipper" id="card-flipper" tabindex="0" role="button" aria-label="Flashcard. Click or press space to flip">
+              <!-- Front Face -->
+              <div class="flashcard-face flashcard-front">
+                <div class="card-face-header">
+                  <span class="card-side-tag">QUESTION / FRONT</span>
+                  <span class="card-hint-badge" id="card-hint-toggle">💡 Hint</span>
+                </div>
+                <div class="card-face-content">
+                  <p class="card-text front-text" id="card-front-text">Front question text goes here...</p>
+                  <p class="card-hint-text hidden" id="card-hint-text">Hint content here</p>
+                </div>
+                <div class="card-face-footer">
+                  <span class="flip-instruction-tag">Click anywhere or press <strong>Space</strong> to flip ↻</span>
+                </div>
+              </div>
+
+              <!-- Back Face -->
+              <div class="flashcard-face flashcard-back">
+                <div class="card-face-header">
+                  <span class="card-side-tag success-side">ANSWER / BACK</span>
+                  <span class="card-badge-status" id="card-status-badge">Review</span>
+                </div>
+                <div class="card-face-content">
+                  <p class="card-text back-text" id="card-back-text">Answer explanation text goes here...</p>
+                </div>
+                <div class="card-face-footer">
+                  <span class="flip-instruction-tag">Click anywhere or press <strong>Space</strong> to flip back ↺</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Study Action Buttons -->
+          <div class="study-controls-row">
+            <button class="study-btn prev-btn" id="btn-card-prev" title="Previous Card (Left Arrow)">
+              <span>←</span> Prev
+            </button>
+            <button class="study-btn flip-btn" id="btn-card-flip">
+              <span>🔄</span> Flip Card (Space)
+            </button>
+            <button class="study-btn mark-learning-btn" id="btn-mark-learning" title="Mark as Still Learning (Key 1)">
+              <span>🤔</span> Still Learning
+            </button>
+            <button class="study-btn mark-mastered-btn" id="btn-mark-mastered" title="Mark as Mastered (Key 2)">
+              <span>✨</span> Mastered!
+            </button>
+            <button class="study-btn next-btn" id="btn-card-next" title="Next Card (Right Arrow)">
+              Next <span>→</span>
+            </button>
+          </div>
+
+          <!-- Quick Deck Action & Shortcut Tip -->
+          <div class="study-footer-tip">
+            <div class="keyboard-shortcuts-pill">
+              <span>⌨️ Shortcuts: <strong>Space</strong> Flip • <strong>←/→</strong> Prev/Next • <strong>1</strong> Repeat • <strong>2</strong> Mastered</span>
+            </div>
+            <button class="ghost-btn" id="btn-shuffle-deck">🔀 Shuffle</button>
+          </div>
+        </div>
+
+        <!-- Study Finished Summary Screen -->
+        <div id="deck-finished-view" class="deck-finished-container hidden">
+          <div class="glass-card finished-card">
+            <div class="finished-celebration-icon">🎉</div>
+            <h2>Deck Review Completed!</h2>
+            <p id="deck-finished-subtitle">Outstanding work exercising your active recall.</p>
+            
+            <div class="finished-stats-grid">
+              <div class="finished-stat-box">
+                <span class="finished-num" id="finished-total-cards">5</span>
+                <span class="finished-label">Total Cards</span>
+              </div>
+              <div class="finished-stat-box highlight-success">
+                <span class="finished-num" id="finished-mastered-cards">4</span>
+                <span class="finished-label">Mastered</span>
+              </div>
+              <div class="finished-stat-box highlight-warning">
+                <span class="finished-num" id="finished-learning-cards">1</span>
+                <span class="finished-label">Needs Practice</span>
+              </div>
+            </div>
+
+            <div class="finished-actions">
+              <button class="control-btn primary-btn" id="btn-restart-deck">🔄 Restart Deck</button>
+              <button class="control-btn secondary-btn" id="btn-review-learning-only">🎯 Practice Learning Only</button>
+              <button class="control-btn secondary-btn" id="btn-generate-quiz-from-deck">📝 Quiz on this Deck</button>
+              <button class="control-btn ghost-btn" id="btn-back-to-decks-list">← All Decks</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. QUIZ VIEW ================= -->
+      <section class="view-panel" id="view-quiz" role="tabpanel">
+        <div class="section-toolbar">
+          <div class="toolbar-title-group">
+            <h2 class="section-title">📝 Interactive Quiz Master</h2>
+            <p class="section-subtitle">Challenge your recall with timed, multiple-choice quizzes and explanations.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="control-btn primary-btn" id="btn-create-quiz">
+              <span>➕</span> Create Custom Quiz
+            </button>
+            <button class="control-btn secondary-btn" id="btn-quiz-from-flashcards">
+              <span>✨</span> Generate from Flashcards
+            </button>
+          </div>
+        </div>
+
+        <!-- Quiz List View -->
+        <div id="quiz-list-view" class="quiz-list-container">
+          <div class="quiz-cards-grid" id="quiz-cards-grid">
+            <!-- Dynamically populated quizzes -->
+          </div>
+        </div>
+
+        <!-- Active Quiz Play Arena -->
+        <div id="quiz-play-view" class="quiz-play-container hidden">
+          <div class="quiz-top-bar">
+            <button class="ghost-btn" id="btn-quit-quiz">✕ Quit Quiz</button>
+            <div class="quiz-header-center">
+              <h3 id="active-quiz-title">Quiz Title</h3>
+              <span class="quiz-step-tag" id="quiz-question-counter">Question 1 of 5</span>
+            </div>
+            <div class="quiz-timer-badge" id="quiz-timer-display">
+              <span>⏱️</span> <span id="quiz-elapsed-time">00:00</span>
+            </div>
+          </div>
+
+          <div class="linear-progress-bar quiz-progress">
+            <div class="linear-progress-fill" id="quiz-progress-fill" style="width: 20%;"></div>
+          </div>
+
+          <!-- Question Box -->
+          <div class="glass-card quiz-card">
+            <div class="quiz-question-box">
+              <span class="question-number-badge" id="question-badge">Q1</span>
+              <h3 class="question-title" id="quiz-question-text">Question goes here?</h3>
+            </div>
+
+            <!-- Answer Options List -->
+            <div class="quiz-options-list" id="quiz-options-list">
+              <!-- Dynamically generated 4 option buttons -->
+            </div>
+
+            <!-- Instant Feedback & Explanation Box -->
+            <div class="quiz-explanation-box hidden" id="quiz-explanation-box">
+              <div class="explanation-header" id="explanation-header">
+                <span id="explanation-icon">✓</span>
+                <span id="explanation-title">Correct! Excellent job!</span>
+              </div>
+              <p class="explanation-text" id="explanation-text">Detailed explanation will be placed here.</p>
+            </div>
+
+            <!-- Next Question Control -->
+            <div class="quiz-footer-actions">
+              <div class="quiz-score-ticker">
+                Score: <strong id="quiz-live-score">0</strong> / <span id="quiz-total-answered">0</span>
+              </div>
+              <button class="control-btn primary-btn hidden" id="btn-quiz-next">
+                Next Question <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Results & Score Screen -->
+        <div id="quiz-results-view" class="quiz-results-container hidden">
+          <div class="glass-card results-card">
+            <div class="results-badge-bubble" id="results-badge-emoji">🏆</div>
+            <h2 id="results-grade-title">Quiz Completed!</h2>
+            <p id="results-grade-subtitle">Here is how you performed in this challenge.</p>
+
+            <div class="score-circular-wrapper">
+              <div class="score-circle-display">
+                <span class="score-percentage" id="results-percentage">80%</span>
+                <span class="score-fraction" id="results-fraction">4 of 5 correct</span>
+              </div>
+            </div>
+
+            <!-- Review Breakdown -->
+            <div class="results-summary-pills">
+              <div class="pill-stat">
+                <span class="pill-label">Time Taken</span>
+                <strong id="results-time-taken">1m 24s</strong>
+              </div>
+              <div class="pill-stat">
+                <span class="pill-label">Accuracy</span>
+                <strong id="results-accuracy">80%</strong>
+              </div>
+              <div class="pill-stat">
+                <span class="pill-label">Buddy Rating</span>
+                <strong id="results-buddy-rating">🌟 Brilliant</strong>
+              </div>
+            </div>
+
+            <!-- Detailed Question Review Accordion -->
+            <div class="quiz-review-section">
+              <h4 class="review-title">Questions Review</h4>
+              <div class="review-items-list" id="quiz-review-list">
+                <!-- Injected answers review -->
+              </div>
+            </div>
+
+            <div class="results-actions">
+              <button class="control-btn primary-btn" id="btn-retake-quiz">🔄 Retake Quiz</button>
+              <button class="control-btn secondary-btn" id="btn-back-to-quizzes">← Back to Quizzes</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. BUDDY & STATS VIEW ================= -->
+      <section class="view-panel" id="view-stats" role="tabpanel">
+        <div class="stats-overview-grid">
+          <!-- Big Buddy Profile Card -->
+          <div class="glass-card buddy-customizer-card">
+            <div class="customizer-header">
+              <span class="badge-mini">Your Study Buddy</span>
+              <h3>Personalize Your Companion</h3>
+              <p class="text-muted">Pick a mascot avatar and personality to stay inspired.</p>
+            </div>
+
+            <div class="buddy-picker-row">
+              <button class="avatar-pick-btn active" data-avatar="fox" title="Kitsune Fox">
+                <span class="pick-emoji">🦊</span>
+                <span class="pick-name">Fox</span>
+              </button>
+              <button class="avatar-pick-btn" data-avatar="owl" title="Athena Owl">
+                <span class="pick-emoji">🦉</span>
+                <span class="pick-name">Owl</span>
+              </button>
+              <button class="avatar-pick-btn" data-avatar="robot" title="Byte Robot">
+                <span class="pick-emoji">🤖</span>
+                <span class="pick-name">Bot</span>
+              </button>
+              <button class="avatar-pick-btn" data-avatar="cat" title="Mochi Cat">
+                <span class="pick-emoji">🐱</span>
+                <span class="pick-name">Cat</span>
+              </button>
+            </div>
+
+            <div class="buddy-rename-group">
+              <label for="buddy-name-input">Buddy Name</label>
+              <div class="input-with-button">
+                <input type="text" id="buddy-name-input" value="Kitsune" maxlength="24">
+                <button class="control-btn secondary-btn" id="btn-save-buddy-name">Save</button>
+              </div>
+            </div>
+
+            <div class="buddy-personality-group">
+              <label for="buddy-personality-select">Companion Persona</label>
+              <select id="buddy-personality-select" class="custom-select">
+                <option value="enthusiastic">Energetic Cheerleader 📣</option>
+                <option value="zen">Zen Sensei 🧘</option>
+                <option value="focused">Strict Focus Coach 🎯</option>
+                <option value="chill">Chill Study Pal ☕</option>
+              </select>
+            </div>
+
+            <div class="buddy-streak-banner">
+              <div class="streak-flame">🔥</div>
+              <div class="streak-info">
+                <h4><span id="streak-days-count">1</span> Day Study Streak!</h4>
+                <p>Keep your daily momentum alive by completing at least 1 Pomodoro or quiz today.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comprehensive Metrics Grid -->
+          <div class="stats-metrics-column">
+            <div class="metrics-cards-grid">
+              <div class="glass-card metric-card">
+                <div class="metric-icon">⏱️</div>
+                <div class="metric-content">
+                  <span class="metric-label">Total Focus Time</span>
+                  <h3 class="metric-val" id="stats-total-time">0 hrs 0 mins</h3>
+                  <span class="metric-trend">Across all sessions</span>
+                </div>
+              </div>
+
+              <div class="glass-card metric-card">
+                <div class="metric-icon">🍅</div>
+                <div class="metric-content">
+                  <span class="metric-label">Completed Pomodoros</span>
+                  <h3 class="metric-val" id="stats-total-pomos">0</h3>
+                  <span class="metric-trend">Sessions completed</span>
+                </div>
+              </div>
+
+              <div class="glass-card metric-card">
+                <div class="metric-icon">🗂️</div>
+                <div class="metric-content">
+                  <span class="metric-label">Flashcard Mastery</span>
+                  <h3 class="metric-val" id="stats-cards-mastered">0 / 0</h3>
+                  <span class="metric-trend" id="stats-mastery-percent">0% mastered</span>
+                </div>
+              </div>
+
+              <div class="glass-card metric-card">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-content">
+                  <span class="metric-label">Quiz Average</span>
+                  <h3 class="metric-val" id="stats-quiz-avg">0%</h3>
+                  <span class="metric-trend" id="stats-quizzes-taken">0 quizzes taken</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Daily Target Progress Card -->
+            <div class="glass-card daily-goal-card">
+              <div class="goal-header">
+                <div>
+                  <h4>Daily Focus Target</h4>
+                  <p class="text-muted">Aim for 4 Pomodoro sessions (100 mins) daily.</p>
+                </div>
+                <span class="goal-fraction" id="daily-goal-fraction">0 / 4 Pomodoros</span>
+              </div>
+              <div class="linear-progress-bar large-progress">
+                <div class="linear-progress-fill" id="daily-goal-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Data Export & Backup Card -->
+            <div class="glass-card data-management-card">
+              <h4>Data & Backups</h4>
+              <p class="text-muted">Your decks, custom quizzes, and stats are saved locally in your browser.</p>
+              <div class="data-actions-row">
+                <button class="control-btn secondary-btn" id="btn-export-all-data">
+                  <span>💾</span> Backup All Data (JSON)
+                </button>
+                <button class="control-btn secondary-btn" id="btn-import-all-data-trigger">
+                  <span>📥</span> Restore Backup
+                </button>
+                <input type="file" id="import-all-file-input" accept=".json" class="hidden">
+                <button class="control-btn danger-ghost-btn" id="btn-reset-all-data">
+                  <span>⚠️</span> Reset All Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>StudyBuddy PRO &bull; Pomodoro, Spaced Flashcards & Adaptive Quizzes &bull; Works 100% Offline</p>
+    </footer>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. Settings Modal -->
+  <div class="modal-overlay hidden" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ Timer & App Settings</h3>
+        <button class="modal-close-btn" data-close="modal-settings">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label for="setting-focus-duration">Focus Duration (minutes)</label>
+          <input type="number" id="setting-focus-duration" min="1" max="120" value="25" class="custom-input">
+        </div>
+        <div class="setting-group">
+          <label for="setting-short-duration">Short Break Duration (minutes)</label>
+          <input type="number" id="setting-short-duration" min="1" max="60" value="5" class="custom-input">
+        </div>
+        <div class="setting-group">
+          <label for="setting-long-duration">Long Break Duration (minutes)</label>
+          <input type="number" id="setting-long-duration" min="1" max="90" value="15" class="custom-input">
+        </div>
+        <div class="setting-group">
+          <label for="setting-long-interval">Long Break Interval (every N sessions)</label>
+          <input type="number" id="setting-long-interval" min="2" max="10" value="4" class="custom-input">
+        </div>
+        <div class="setting-checkbox-row">
+          <input type="checkbox" id="setting-auto-start-break">
+          <label for="setting-auto-start-break">Auto-start Breaks after Focus</label>
+        </div>
+        <div class="setting-checkbox-row">
+          <input type="checkbox" id="setting-auto-start-focus">
+          <label for="setting-auto-start-focus">Auto-start Focus after Break</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="control-btn secondary-btn" data-close="modal-settings">Cancel</button>
+        <button class="control-btn primary-btn" id="btn-save-settings">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Create / Edit Deck Modal -->
+  <div class="modal-overlay hidden" id="modal-deck-editor">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="deck-modal-title">🗂️ Create New Flashcard Deck</h3>
+        <button class="modal-close-btn" data-close="modal-deck-editor">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="setting-group">
+            <label for="deck-input-title">Deck Title *</label>
+            <input type="text" id="deck-input-title" placeholder="e.g. Biology Cell Respiration" class="custom-input" required>
+          </div>
+          <div class="setting-group">
+            <label for="deck-input-category">Category / Subject *</label>
+            <input type="text" id="deck-input-category" placeholder="e.g. Science, Coding, History" class="custom-input" required>
+          </div>
+        </div>
+        <div class="setting-group">
+          <label for="deck-input-desc">Description (Optional)</label>
+          <input type="text" id="deck-input-desc" placeholder="Brief summary of what this deck covers" class="custom-input">
+        </div>
+
+        <!-- Cards List Inside Deck -->
+        <div class="deck-cards-manager-section">
+          <div class="manager-section-header">
+            <h4>Cards in this Deck (<span id="deck-cards-count-badge">0</span>)</h4>
+            <button type="button" class="control-btn secondary-btn mini-btn" id="btn-add-card-to-deck">
+              <span>➕</span> Add Card
+            </button>
+          </div>
+          <div class="cards-editor-scroll-list" id="cards-editor-scroll-list">
+            <!-- Dynamic card rows -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="control-btn secondary-btn" data-close="modal-deck-editor">Cancel</button>
+        <button class="control-btn primary-btn" id="btn-save-deck">Save Deck</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Create Custom Quiz Modal -->
+  <div class="modal-overlay hidden" id="modal-quiz-editor">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="quiz-modal-title">📝 Create Custom Quiz</h3>
+        <button class="modal-close-btn" data-close="modal-quiz-editor">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="setting-group">
+            <label for="quiz-input-title">Quiz Title *</label>
+            <input type="text" id="quiz-input-title" placeholder="e.g. Modern World History" class="custom-input" required>
+          </div>
+          <div class="setting-group">
+            <label for="quiz-input-category">Category *</label>
+            <input type="text" id="quiz-input-category" placeholder="e.g. History, Science" class="custom-input" required>
+          </div>
+        </div>
+        <div class="setting-group">
+          <label for="quiz-input-desc">Description</label>
+          <input type="text" id="quiz-input-desc" placeholder="What does this quiz test?" class="custom-input">
+        </div>
+
+        <div class="quiz-questions-manager">
+          <div class="manager-section-header">
+            <h4>Questions (<span id="quiz-questions-count-badge">0</span>)</h4>
+            <button type="button" class="control-btn secondary-btn mini-btn" id="btn-add-question-to-quiz">
+              <span>➕</span> Add Question
+            </button>
+          </div>
+          <div class="questions-editor-scroll-list" id="questions-editor-scroll-list">
+            <!-- Dynamic question items -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="control-btn secondary-btn" data-close="modal-quiz-editor">Cancel</button>
+        <button class="control-btn primary-btn" id="btn-save-quiz">Save Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Quick Auto-Generate Quiz from Deck Modal -->
+  <div class="modal-overlay hidden" id="modal-auto-quiz">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✨ Auto-Generate Quiz</h3>
+        <button class="modal-close-btn" data-close="modal-auto-quiz">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Select an existing flashcard deck. StudyBuddy will transform your flashcards into a multiple-choice quiz automatically!</p>
+        <div class="setting-group" style="margin-top: 1rem;">
+          <label for="auto-quiz-deck-select">Choose Deck</label>
+          <select id="auto-quiz-deck-select" class="custom-select">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="control-btn secondary-btn" data-close="modal-auto-quiz">Cancel</button>
+        <button class="control-btn primary-btn" id="btn-confirm-auto-quiz">Generate & Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Load Scripts -->
+  <script src="audio.js"></script>
+  <script src="default-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
